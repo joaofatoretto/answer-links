@@ -1,0 +1,20 @@
+{
+  "name": "answer-links",
+  "version": "0.1.0",
+  "description": "Files, folders and links named in Claude's final answer appear as buttons right under it; a click opens them.",
+  "author": {
+    "name": "joaofatoretto",
+    "url": "https://github.com/joaofatoretto"
+  },
+  "homepage": "https://github.com/joaofatoretto/answer-links",
+  "repository": "https://github.com/joaofatoretto/answer-links",
+  "license": "MIT",
+  "keywords": [
+    "links",
+    "files",
+    "transcript",
+    "open",
+    "mod"
+  ],
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,15 @@
+{
+  "name": "answer-links",
+  "description": "answer-links: clickable files, folders and links under Claude's final answer.",
+  "owner": {
+    "name": "joaofatoretto",
+    "url": "https://github.com/joaofatoretto"
+  },
+  "plugins": [
+    {
+      "name": "answer-links",
+      "source": "./",
+      "description": "Files, folders and links named in Claude's final answer appear as buttons right under it; a click opens them."
+    }
+  ]
+}
