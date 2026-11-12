@@ -15,6 +15,8 @@ const PATH_RE =
 const BARE_FILE_RE = /^[\w@+-][\w.@+-]*\.[A-Za-z][\w]{0,9}$/
 
 const TRAILING = /[.,;:!?]+$/
+// A URL also sheds markdown emphasis around it: `**https://x.dev**`, `~~https://x.dev~~.`
+const URL_TRAILING = /[.,;:!?*_~]+$/
 
 export function collapse(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
@@ -46,12 +48,12 @@ export function findCandidates(text: string): Candidate[] {
   const found: Candidate[] = []
 
   for (const m of text.matchAll(URL_RE)) {
-    const url = m[0].replace(TRAILING, '')
+    const url = m[0].replace(URL_TRAILING, '')
     const at = m.index ?? 0
     found.push({ kind: 'url', url, at, end: at + url.length })
   }
   for (const m of text.matchAll(FILE_URL_RE)) {
-    const raw = m[1].replace(TRAILING, '')
+    const raw = m[1].replace(URL_TRAILING, '')
     const { path, line } = splitLine(safeDecode(raw))
     const at = m.index ?? 0
     found.push({ kind: 'path', path, line, at, end: at + 'file://'.length + raw.length, isFileUrl: true })

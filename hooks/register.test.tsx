@@ -65,6 +65,15 @@ test('a URL is not also read as a path', () => {
   expect(kinds).toEqual(['url'])
 })
 
+test('a bold or emphasized URL leaves its markers out', () => {
+  const urls = findCandidates('Fiz: **https://claude.ai/artifact/EGeN** e *https://x.dev/a*. ~~https://y.dev~~')
+    .filter(c => c.kind === 'url')
+    .map(c => c.kind === 'url' && c.url)
+  expect(urls).toEqual(['https://claude.ai/artifact/EGeN', 'https://x.dev/a', 'https://y.dev'])
+  const linked = linkify('Fiz: **https://claude.ai/artifact/EGeN**', c => (c.kind === 'url' ? c.url : undefined))
+  expect(linked).toBe('Fiz: **[https://claude.ai/artifact/EGeN](https://claude.ai/artifact/EGeN)**')
+})
+
 test('only the block that closes the answer gets buttons', () => {
   const list = [{ text: 'Intro text here. Final part with src/app.ts done.', refs: [] }]
   expect(answerFor(list, 'Final part with   src/app.ts done.')).toBe(list[0])
