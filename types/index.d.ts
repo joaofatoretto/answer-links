@@ -12,7 +12,17 @@ export type Ref = {
 }
 
 /** A final answer, whitespace collapsed, what it named, and how many refs past the cap were left out. */
-export type Answer = { text: string; refs: Ref[]; more?: number }
+export type Answer = {
+  text: string
+  refs: Ref[]
+  more?: number
+  /** Every path the answer named that exists, past the cap too: absolute path to its kind. */
+  paths?: Record<string, 'file' | 'dir'>
+  /** The folders its relative paths resolve against, in order: the session's folder then, and its project root. */
+  bases?: string[]
+  /** What 0.1 stored in place of `bases`. */
+  cwd?: string
+}
 
 declare module 'claude-code' {
   interface PluginState {

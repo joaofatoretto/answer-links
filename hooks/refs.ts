@@ -1,8 +1,9 @@
 // Finding the files, folders and links an answer names. Pure: no `$`.
 
+/** A URL or path-like token, and where it stands in the text: `[at, end)`. */
 export type Candidate =
-  | { kind: 'url'; url: string; at: number }
-  | { kind: 'path'; path: string; line?: number; at: number }
+  | { kind: 'url'; url: string; at: number; end: number }
+  | { kind: 'path'; path: string; line?: number; at: number; end: number; isFileUrl?: true }
 
 const URL_RE = /\bhttps?:\/\/[^\s<>"'`)\]]+/g
 const FILE_URL_RE = /\bfile:\/\/(\/[^\s<>"'`)\]]+)/g
@@ -17,6 +18,14 @@ const TRAILING = /[.,;:!?]+$/
 
 export function collapse(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
+}
+
+function safeDecode(s: string): string {
+  try {
+    return decodeURI(s)
+  } catch {
+    return s
+  }
 }
 
 function splitLine(token: string): { path: string; line?: number } {
@@ -37,16 +46,21 @@ export function findCandidates(text: string): Candidate[] {
   const found: Candidate[] = []
 
   for (const m of text.matchAll(URL_RE)) {
-    found.push({ kind: 'url', url: m[0].replace(TRAILING, ''), at: m.index ?? 0 })
+    const url = m[0].replace(TRAILING, '')
+    const at = m.index ?? 0
+    found.push({ kind: 'url', url, at, end: at + url.length })
   }
   for (const m of text.matchAll(FILE_URL_RE)) {
-    const { path, line } = splitLine(decodeURI(m[1].replace(TRAILING, '')))
-    found.push({ kind: 'path', path, line, at: m.index ?? 0 })
+    const raw = m[1].replace(TRAILING, '')
+    const { path, line } = splitLine(safeDecode(raw))
+    const at = m.index ?? 0
+    found.push({ kind: 'path', path, line, at, end: at + 'file://'.length + raw.length, isFileUrl: true })
   }
   for (const m of text.matchAll(CODE_RE)) {
     const token = m[1].trim().replace(TRAILING, '')
     const { path, line } = splitLine(token)
-    if (looksLikePath(path)) found.push({ kind: 'path', path, line, at: m.index ?? 0 })
+    const at = m.index ?? 0
+    if (looksLikePath(path)) found.push({ kind: 'path', path, line, at, end: at + m[0].length })
   }
 
   // Bare paths in prose, with URLs blanked so their paths aren't read twice.
@@ -55,10 +69,38 @@ export function findCandidates(text: string): Candidate[] {
     const path = m[1].replace(TRAILING, '')
     if (path === '/' || path === '//' || path.length < 3) continue
     const at = (m.index ?? 0) + m[0].indexOf(m[1])
-    found.push({ kind: 'path', path, line: m[2] ? Number(m[2]) : undefined, at })
+    const end = m[2] ? (m.index ?? 0) + m[0].length : at + path.length
+    found.push({ kind: 'path', path, line: m[2] ? Number(m[2]) : undefined, at, end })
   }
 
   return found.sort((a, b) => a.at - b.at)
+}
+
+/** Blanks what must not get links: fenced code, and links or autolinks already written. */
+function maskMarkdown(text: string): string {
+  const blank = (s: string) => s.replace(/[^\n]/g, ' ')
+  return text
+    .replace(/^(```|~~~)[^\n]*\n[\s\S]*?(?:^\1[^\n]*$|(?![\s\S]))/gm, blank)
+    .replace(/!?\[[^\]\n]*\]\([^)\n]*\)/g, blank)
+    .replace(/<(?:https?|file):[^>\s]+>/g, blank)
+}
+
+/**
+ * The text with each token `hrefFor` answers turned into a markdown link to
+ * that href, the token's own spelling (backticks included) as the link text.
+ * Fenced code and links already written are left alone.
+ */
+export function linkify(text: string, hrefFor: (c: Candidate) => string | undefined): string {
+  let out = ''
+  let pos = 0
+  for (const c of findCandidates(maskMarkdown(text))) {
+    if (c.at < pos) continue
+    const href = hrefFor(c)
+    if (!href) continue
+    out += text.slice(pos, c.at) + `[${text.slice(c.at, c.end)}](${href})`
+    pos = c.end
+  }
+  return out + text.slice(pos)
 }
 
 export function resolvePath(path: string, cwd: string, home: string | undefined): string | undefined {
